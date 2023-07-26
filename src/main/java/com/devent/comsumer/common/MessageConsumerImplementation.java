@@ -5,5 +5,5 @@ import com.devent.messaging.consumer.MessageHandler;
 import java.util.Set;
 
 public interface MessageConsumerImplementation {
-    void subscribe(String subscriberId, Set<String> channels, MessageHandler handler);
+    void subscribe() throws InstantiationException, IllegalAccessException;
 }
