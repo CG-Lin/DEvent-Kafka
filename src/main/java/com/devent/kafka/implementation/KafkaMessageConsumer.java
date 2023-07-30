@@ -51,6 +51,8 @@ public class KafkaMessageConsumer {
                 new UsePartitionTimeOnInvalidTimestamp(), stringDeserializer, clazzDeserializer,simpleName)
                 .addProcessor(simpleName+"Processor",()->processor,simpleName)
                 .addSink(simpleName+"Sink",topicName,stringSerializer,clazzSerde.serializer(),simpleName+"Processor");
+
+        return null;
     }
 
 
