@@ -29,19 +29,24 @@ public class KafkaMessageConsumer {
 
     private String topicName;
 
-    public KafkaMessageConsumer(){
+    public KafkaMessageConsumer() {
 
     }
 
-    public KafkaMessageConsumer fromTopic(String topicName){
+    public KafkaMessageConsumer(Topology topology) {
+        this.topology = topology;
+    }
+
+    public KafkaMessageConsumer fromTopic(String topicName) {
         this.topicName = topicName;
         return this;
     }
 
-    private KafkaMessageConsumer createTopology(){
+    private KafkaMessageConsumer createTopology() {
         this.topology = new Topology();
         return this;
     }
+
     //TODO 修改为特定的接收器名称
     //进行消息订阅
     //@Override
@@ -53,14 +58,14 @@ public class KafkaMessageConsumer {
 
         //反序列化
         Deserializer<String> stringDeserializer = stringSerde.deserializer();
-        JsonDeserializer<C> clazzDeserializer= new JsonDeserializer<C>();
+        JsonDeserializer<C> clazzDeserializer = new JsonDeserializer<C>();
 
         //创建Kafka Stream
         StreamsBuilder streamsBuilder = new StreamsBuilder();
         //创建拓扑
         //Topology topology = new Topology();
 
-        //返
+        //创建处理器
         String simpleName = clazz.getSimpleName();
         HandlerProcessor<String, C, Message> processor = new HandlerProcessor.Builder<String, C, Message>()
                 .withFunction(function)
@@ -68,11 +73,23 @@ public class KafkaMessageConsumer {
 
         //拓扑链路,回到saga的编排器
         topology.addSource(Topology.AutoOffsetReset.EARLIEST, topicName,
-                new UsePartitionTimeOnInvalidTimestamp(), stringDeserializer, clazzDeserializer,simpleName)
-                .addProcessor(simpleName+"Processor",()->processor,simpleName)
-                .addSink(simpleName+"Sink",topicName,stringSerializer,clazzSerde.serializer(),simpleName+"Processor");
+                        new UsePartitionTimeOnInvalidTimestamp(), stringDeserializer, clazzDeserializer, simpleName)
+                .addProcessor(simpleName + "Processor", () -> processor, simpleName)
+                .addSink(simpleName + "Sink", topicName, stringSerializer, clazzSerde.serializer(), simpleName + "Processor");
 
         return this;
     }
 
+    //任务回滚
+    public <C> KafkaMessageConsumer rollback(Class<C> clazz, Function<C, Message> function) {
+
+        String simpleName = clazz.getSimpleName();
+
+        HandlerProcessor<String, C, Message> processor = new HandlerProcessor.Builder<String, C, Message>()
+                .withFunction(function)
+                .withChildNodeName(simpleName).build();
+
+        topology.addProcessor(simpleName + "Processor", () -> processor, simpleName)
+                .addSink(simpleName + "Sink", topicName, stringSerializer, clazzSerde.serializer(), simpleName + "Processor");
+    }
 }
